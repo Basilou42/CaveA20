@@ -3,7 +3,8 @@
 Application pour la gestion d'une cave a vin
 
 
-- [ ] Création repository
-- [ ] README
+- [x] Création repository
+- [x] README
 - [ ] Diagramme de classe UML
 - [ ] Code commenté
+- [ ] Application Web
