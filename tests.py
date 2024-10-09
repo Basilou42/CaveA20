@@ -46,10 +46,12 @@ class TestVinApp(unittest.TestCase):
 		self.assertEqual(len(self.cave.etageres[0].bouteilles), 0)
 
 	def test_ajout_lots_bouteilles(self):
-		"""Test de l'ajout de plusieurs bouteilles identiques en lot"""
+		"""Test de l'ajout d'un lot de bouteilles dans une étagère avec capacité limitée"""
 		bouteille_lot = Bouteille("Château Margaux", "Margaux", "Rouge", "Bordeaux", 2016, 1200, "photo.jpg", quantite=10)
-		self.cave.ajouter_bouteille(bouteille_lot, 1)
-		self.assertEqual(self.cave.etageres[0].bouteilles[0].quantite, 10)
+		with self.assertRaises(Exception) as context:
+			self.cave.ajouter_bouteille(bouteille_lot, 1)
+
+		self.assertTrue("l'étagère est pleine" in str(context.exception))
 
 	def test_lister_bouteilles(self):
 		"""Test de la liste des bouteilles dans toutes les caves"""

@@ -69,14 +69,16 @@ class Etagere:
 		self.emplacements = emplacements
 		self.bouteilles = [] # Liste des bouteilles dans l'étagere
 
-	def place_libre(self):
-		return len(self.bouteilles) < self.emplacements
+	def place_libre(self, nombre_bouteilles=1):
+		# Vérifie si l'étagère a assez de place pour ajouter un certain nombre de bouteilles
+		return len(self.bouteilles) + nombre_bouteilles <= self.emplacements
 
 	def ajouter_bouteille(self, bouteille):
-		if self.place_libre():
+		# On vérifie si la quantité à ajouter dépasse la capacité restante
+		if self.place_libre(bouteille.quantite):
 			self.bouteilles.append(bouteille)
 		else:
-			raise Exception("l'étagere est pleine !")
+			raise Exception("l'étagère est pleine ou pas assez de place pour ce lot de bouteilles !")
 
 	def retirer_bouteille(self, bouteille):
 		if bouteille in self.bouteilles:
