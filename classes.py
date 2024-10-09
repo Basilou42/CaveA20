@@ -25,11 +25,11 @@ class User:
 
 	def liste_bouteilles(self):
 		# renvoie une liste de toutes les bouteilles dans toutes les caves possédées par l'utilisateur
-		return [bouteile for cave in self.caves for bouteilles in cave.liste_bouteilles()]
+		return [bouteille for cave in self.caves for etagere in cave.etageres for bouteille in etagere.bouteilles]
 
 	def tri_bouteilles(self, attribut):
 		# Trie les bouteilles selon un attribut
-		return sorted(self.liste_bouteilles(), key=lambda b: getattr(b, attribute))
+		return sorted(self.liste_bouteilles(), key=lambda b: getattr(b, attribut))
 
 
 
@@ -37,17 +37,21 @@ class Cave:
 	def __init__(self, name):
 		self.name = name
 		self.etageres = [] # Liste des étageres
+		self.compteur_etagere = 0  # Initialise un compteur d'étagère pour cette cave
 
 	def ajouter_etagere(self, emplacements):
-		etagere = Etagere(emplacements)
+		self.compteur_etagere += 1
+		etagere = Etagere(self.compteur_etagere, emplacements)
 		self.etageres.append(etagere)
 
 	def ajouter_bouteille(self, bouteille, num_etagere):
-		for etagere in self.etageres:
-			if etagere.num_etagere == num_etagere and etagere.place_libre():
-				etagere.ajouter_bouteille(bouteille)
-				return
-		raise Exception("Plus d'espace disponible sur cette étagere")
+	    print(f"Numéro d'étagère recherché: {num_etagere}")
+	    for etagere in self.etageres:
+	        print(f"Numéro d'étagère actuel: {etagere.num_etagere}, Bouteilles: {etagere.bouteilles}")
+	        if etagere.num_etagere == num_etagere and etagere.place_libre():
+	            etagere.ajouter_bouteille(bouteille)
+	            return
+	    raise Exception("Plus d'espace disponible ou mauvais numéro d'étagère")
 
 	def liste_bouteilles(self):
 		return [bouteilles for etagere in self.etageres for bouteilles in etagere.bouteilles]
@@ -60,10 +64,8 @@ class Cave:
 		raise Exception("Bouteille non trouvée")
 
 class Etagere:
-	dernier_etagere_num = 0
-	def __init__(self, emplacements):
-		Etagere.dernier_etagere_num += 1
-		self.num_etagere = Etagere.dernier_etagere_num
+	def __init__(self, num_etagere, emplacements):
+		self.num_etagere = num_etagere
 		self.emplacements = emplacements
 		self.bouteilles = [] # Liste des bouteilles dans l'étagere
 

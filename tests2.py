@@ -1,5 +1,5 @@
 import unittest
-from classes import User, Cave, Etagere, Bouteille
+from classes import *
 
 class TestClasses(unittest.TestCase):
 
@@ -38,16 +38,32 @@ class TestClasses(unittest.TestCase):
         bottle2 = Bouteille("Domaine B", "Wine B", "White", "Region B", 2018, 25.0, "photo_b.jpg")
         bottle3 = Bouteille("Domaine C", "Wine C", "Rose", "Region C", 2019, 15.0, "photo_c.jpg")
         user = User("testuser", "password123")
+
+        # Add a shelf with 5 available spaces
         user.ajouter_cave("My Cave")
-        user.caves[0].ajouter_etagere(10)
-        self.assertEqual(len(user.caves[0].etageres), 1)
-        self.assertEqual(user.caves[0].etageres[0].emplacements, 10)
-        user.caves[0].ajouter_bouteille(bottle1, 1)
-        user.caves[0].ajouter_bouteille(bottle2, 1)
-        user.caves[0].ajouter_bouteille(bottle3, 1)
+        cave1 = user.caves[0]
+        cave1.ajouter_etagere(5)
+        self.assertEqual(cave1.etageres[0].emplacements, 5)
+
+        # Add bottles to the first shelf (etagere)
+        cave1.ajouter_bouteille(bottle1, 1)  # Add bottle1 to shelf 1
+        cave1.ajouter_bouteille(bottle2, 1)  # Add bottle2 to shelf 1
+        cave1.ajouter_bouteille(bottle3, 1)  # Add bottle3 to shelf 1
+
+        # Check if bottles are correctly added
+        print("Cave 1 - Etagère 1 bouteilles:", cave1.etageres[0].bouteilles)
+
+        # Sort bottles by price
+        liste_bouteilles = user.liste_bouteilles()
+        print("Bouteilles après ajout:", liste_bouteilles)
+
         sorted_bottles = user.tri_bouteilles("prix")
+        print("Bouteilles triées par prix:", sorted_bottles)
+
         self.assertEqual(sorted_bottles[0].prix, 15.0)
         self.assertEqual(sorted_bottles[2].prix, 25.0)
+
+
 
     def test_adding_shelf(self):
         cave = Cave("Test Cave")
@@ -60,8 +76,10 @@ class TestClasses(unittest.TestCase):
         cave = Cave("Test Cave")
         cave.ajouter_etagere(1)
         cave.ajouter_bouteille(bottle, 1)
+        print(cave.liste_bouteilles())
         self.assertEqual(len(cave.liste_bouteilles()), 1)
         cave.retirer_bouteille(bottle)
+        print(cave.liste_bouteilles())
         self.assertEqual(len(cave.liste_bouteilles()), 0)
 
     def test_bottle_creation(self):
