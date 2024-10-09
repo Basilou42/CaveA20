@@ -25,9 +25,15 @@ class User:
 	def save(self):
 		db = get_db_connection()
 		cursor = db.cursor()
+
+		# Insertion de l'utilisateur dans la base de données
 		cursor.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", 
 					   (self.username, self.password_hash))
 		db.commit()
+
+		# Récupération du user_id généré par la base de données
+		self.user_id = cursor.lastrowid
+
 		cursor.close()
 		db.close()
 
