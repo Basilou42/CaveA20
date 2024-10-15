@@ -1,176 +1,181 @@
+import mysql.connector
 import hashlib
 
+# Connexion à la base de données
+def get_db_connection():
+    return mysql.connector.connect(
+        host="localhost",   # Remplace par ton hôte MariaDB
+        user="root",        # Remplace par ton utilisateur MariaDB
+        password="mysqlroot",
+        port=3306,# Remplace par ton mot de passe
+        database="gestion_vins"
+    )
+
 class User:
-	dernier_user_id = 0
+    def __init__(self, username, password):
+        self.username = username
+        self.password_hash = self.hash_password(password)
 
-	def __init__(self, username, password):
-		User.dernier_user_id += 1
-		self_user_id = User.dernier_user_id
-		self.username = username
-		self.password_hash = self.hash_password(password)
-		self.caves = []  # List des caves appartenant a l'utilisateur
+    def hash_password(self, password):
+        return hashlib.sha256(password.encode()).hexdigest()
 
-	def hash_password(self, password):
-		#Crée un hash SHA-256 du mot de passe utilisateur
-		return hashlib.sha256(password.encode()).hexdigest()
+    def verify_password(self, password):
+        return self.password_hash == hashlib.sha256(password.encode()).hexdigest()
 
-	def verify_password(self, password):
-		#Verifie si le mot de passe entré correspond au hash du mot de passe
-		return self.password_hash == hashlib.sha256(password.encode()).hexdigest()
+    def save(self):
+        db = get_db_connection()
+        cursor = db.cursor()
 
-	def ajouter_cave(self, nom):
-		# crée une nouvelle cave pour l'utilisateur
-		new_cave = Cave(nom)
-		self.caves.append(new_cave)
+        # Check if the username already exists
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username = %s", (self.username,))
+        if cursor.fetchone()[0] > 0:
+            raise Exception(f"Username '{self.username}' already exists.")
+        
+        cursor.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", 
+                       (self.username, self.password_hash))
+        db.commit()
 
-	def liste_bouteilles(self):
-		# renvoie une liste de toutes les bouteilles dans toutes les caves possédées par l'utilisateur
-		return [bouteille for cave in self.caves for etagere in cave.etageres for bouteille in etagere.bouteilles]
+        self.user_id = cursor.lastrowid
+        cursor.close()
+        db.close()
 
-	def tri_bouteilles(self, attribut):
-		# Trie les bouteilles selon un attribut
-		return sorted(self.liste_bouteilles(), key=lambda b: getattr(b, attribut))
 
+    @staticmethod
+    def get_by_username(username):
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        user_data = cursor.fetchone()
+        cursor.close()
+        db.close()
+        if user_data:
+            # Create the User object without hashing the password
+            user = User(user_data['username'], '')  # Pass a placeholder password
+            user.password_hash = user_data['password_hash']  # Assign the password hash directly
+            user.user_id = user_data['user_id']
+            return user
+        return None
+
+
+
+    def ajouter_cave(self, nom):
+        db = get_db_connection()
+        cursor = db.cursor()
+        cursor.execute("INSERT INTO caves (nom, user_id) VALUES (%s, %s)", (nom, self.user_id))
+        db.commit()
+        cursor.close()
+        db.close()
 
 class Cave:
-	def __init__(self, name):
-		self.name = name
-		self.etageres = [] # Liste des étageres
-		self.compteur_etagere = 0  # Initialise un compteur d'étagère pour cette cave
+    def __init__(self, nom, user_id):
+        self.nom = nom
+        self.user_id = user_id
 
-	def ajouter_etagere(self, emplacements):
-		self.compteur_etagere += 1
-		etagere = Etagere(self.compteur_etagere, emplacements)
-		self.etageres.append(etagere)
+    @staticmethod
+    def get_caves_by_user(user_id):
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM caves WHERE user_id = %s", (user_id,))
+        caves = cursor.fetchall()
+        cursor.close()
+        db.close()
+        return caves
 
-	def ajouter_bouteille(self, bouteille, num_etagere):
-		#print(f"Numéro d'étagère recherché: {num_etagere}")
-		for etagere in self.etageres:
-			#print(f"Numéro d'étagère actuel: {etagere.num_etagere}, Bouteilles: {etagere.bouteilles}")
-			if etagere.num_etagere == num_etagere and etagere.place_libre():
-				etagere.ajouter_bouteille(bouteille)
-				return
-		raise Exception("Plus d'espace disponible ou mauvais numéro d'étagère")
-
-	def liste_bouteilles(self):
-		return [bouteilles for etagere in self.etageres for bouteilles in etagere.bouteilles]
-
-	def retirer_bouteille(self, bouteille):
-		for etagere in self.etageres:
-			if bouteille in etagere.bouteilles:
-				etagere.retirer_bouteille(bouteille)
-				return
-		raise Exception("Bouteille non trouvée")
-
+    def ajouter_etagere(self, emplacements):
+        db = get_db_connection()
+        cursor = db.cursor()
+        cursor.execute("INSERT INTO etageres (num_etagere, emplacements, cave_id) VALUES (%s, %s, %s)",
+                       (self.num_etagere, emplacements, self.cave_id))
+        db.commit()
+        cursor.close()
+        db.close()
 
 class Etagere:
-	def __init__(self, num_etagere, emplacements):
-		self.num_etagere = num_etagere
-		self.emplacements = emplacements
-		self.bouteilles = [] # Liste des bouteilles dans l'étagere
+    def __init__(self, num_etagere, emplacements, cave_id, etagere_id=None):
+        self.num_etagere = num_etagere
+        self.emplacements = emplacements
+        self.cave_id = cave_id
+        self.etagere_id = etagere_id
 
-	def place_libre(self, nombre_bouteilles=1):
-		# Vérifie si l'étagère a assez de place pour ajouter un certain nombre de bouteilles
-		return len(self.bouteilles) + nombre_bouteilles <= self.emplacements
+    @staticmethod
+    def get_etageres_by_cave(cave_id):
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM etageres WHERE cave_id = %s", (cave_id,))
+        etageres = cursor.fetchall()  # Fetch all shelves associated with the given cave_id
+        cursor.close()
+        db.close()
+        return etageres
 
-	def ajouter_bouteille(self, bouteille):
-		# On vérifie si la quantité à ajouter dépasse la capacité restante
-		if self.place_libre(bouteille.quantite):
-			self.bouteilles.append(bouteille)
-		else:
-			raise Exception("l'étagère est pleine ou pas assez de place pour ce lot de bouteilles !")
+    def ajouter_etagere(self, emplacements):
+        db = get_db_connection()
+        cursor = db.cursor()
+        cursor.execute("INSERT INTO etageres (num_etagere, emplacements, cave_id) VALUES (%s, %s, %s)",
+                       (self.num_etagere, emplacements, self.cave_id))
+        db.commit()
+        self.etagere_id = cursor.lastrowid  # Set the etagere_id
+        cursor.close()
+        db.close()
 
-	def retirer_bouteille(self, bouteille):
-		if bouteille in self.bouteilles:
-			self.bouteilles.remove(bouteille)
-		else:
-			raise Exception("Bouteille non trouvée !")
+    def place_libre(self, nombre_bouteilles=1):
+        db = get_db_connection()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM bouteilles WHERE etagere_id = %s", (self.etagere_id,))
+        nb_bouteilles = cursor.fetchone()[0]
+        cursor.close()
+        db.close()
+        return nb_bouteilles + nombre_bouteilles <= self.emplacements
 
+    def ajouter_bouteille(self, bouteille):
+        db = get_db_connection()
+        cursor = db.cursor()
+        if self.place_libre(bouteille.quantite):
+            cursor.execute("INSERT INTO bouteilles (domaine, nom, type_vin, region, annee, prix, photo, quantite, etagere_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                           (bouteille.domaine, bouteille.nom, bouteille.typeVin, bouteille.region, bouteille.annee, bouteille.prix, bouteille.photo, bouteille.quantite, self.etagere_id))
+            db.commit()
+        else:
+            raise Exception("Pas assez de place dans l'étagère")
+        cursor.close()
+        db.close()
 
 class Bouteille:
-	dernier_bouteille_id = 0
+    def __init__(self, domaine, nom, typeVin, region, annee, prix, photo, quantite=1):
+        self.domaine = domaine
+        self.nom = nom
+        self.typeVin = typeVin
+        self.region = region
+        self.annee = annee
+        self.prix = prix
+        self.photo = photo
+        self.quantite = quantite
 
-	def __init__(self, domaine, nom, typeVin, region, annee, prix, photo, quantite=1, proprietaires=None):
-		Bouteille.dernier_bouteille_id += 1
-		self.bouteille_id = Bouteille.dernier_bouteille_id
-		self.domaine = domaine
-		self.nom = nom
-		self.typeVin = typeVin
-		self.region = region
-		self.annee = annee
-		self.prix = prix
-		self.photo = photo
-		self.quantite = quantite
-		self.proprietaires = proprietaires if proprietaires is not None else []  # Liste des utilisateurs propriétaires
-		self.communaute = Communaute()  # Ajouter la communauté pour chaque bouteille
-
-	def supprimer_bouteille(self):
-		del self
-
-	def archiver(self, note, commentaire):
-		#archive la bouteille
-		self.note = note
-		self.commentaire = commentaire
-
-	def ajouter_quantite(self, nombre):
-		self.quantite += nombre
-
-	def retirer_quantite(self, nombre):
-		if nombre <= self.quantite:
-			self.quantite -= nombre
-		else:
-			raise Exception("Pas assez de bouteilles en stock !")
-
-	def ajouter_proprietaire(self, utilisateur):
-		if utilisateur not in self.proprietaires:
-			self.proprietaires.append(utilisateur)
-
-	def retirer_proprietaire(self, utilisateur):
-		if utilisateur in self.proprietaires:
-			self.proprietaires.remove(utilisateur)
-
-	def ajouter_note_commentaire(self, utilisateur, note, commentaire):
-		self.communaute.ajouter_note_commentaire(self, utilisateur, note, commentaire)
-
-	def afficher_note_moyenne(self):
-		return self.communaute.calculer_note_moyenne(self)
-
-	def afficher_commentaires(self):
-		return self.communaute.afficher_commentaires(self)
+    @staticmethod
+    def get_bouteilles_by_etagere(etagere_id):
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM bouteilles WHERE etagere_id = %s", (etagere_id,))
+        bouteilles = cursor.fetchall()
+        cursor.close()
+        db.close()
+        return bouteilles
 
 class Communaute:
-	def __init__(self):
-		# Dictionnaire qui stocke les commentaires et les notes pour chaque bouteille.
-		# La clé est l'ID de la bouteille, et la valeur est une liste de tuples (utilisateur, note, commentaire).
-		self.notes_commentaires = {}
+    @staticmethod
+    def ajouter_note_commentaire(user_id, bouteille_id, note, commentaire):
+        db = get_db_connection()
+        cursor = db.cursor()
+        cursor.execute("INSERT INTO notes_commentaires (user_id, bouteille_id, note, commentaire) VALUES (%s, %s, %s, %s)",
+                       (user_id, bouteille_id, note, commentaire))
+        db.commit()
+        cursor.close()
+        db.close()
 
-	def ajouter_note_commentaire(self, bouteille, utilisateur, note, commentaire):
-		# Vérification de la validité de la note
-		if not (0 <= note <= 5):
-			raise ValueError("La note doit être entre 0 et 5.")
-
-		# Si la bouteille n'a pas encore de notes/commentaires, initialiser la liste pour cette bouteille
-		if bouteille.bouteille_id not in self.notes_commentaires:
-			self.notes_commentaires[bouteille.bouteille_id] = []
-
-		# Ajouter la note et le commentaire pour la bouteille
-		self.notes_commentaires[bouteille.bouteille_id].append((utilisateur.username, note, commentaire))
-
-	def calculer_note_moyenne(self, bouteille):
-		# Vérifier si la bouteille a des notes
-		if bouteille.bouteille_id not in self.notes_commentaires or len(self.notes_commentaires[bouteille.bouteille_id]) == 0:
-			raise Exception("Aucune note pour cette bouteille.")
-
-		# Calculer la moyenne des notes
-		total_notes = sum(note for _, note, _ in self.notes_commentaires[bouteille.bouteille_id])
-		nb_notes = len(self.notes_commentaires[bouteille.bouteille_id])
-		return total_notes / nb_notes
-
-	def afficher_commentaires(self, bouteille):
-		# Vérifier si la bouteille a des commentaires
-		if bouteille.bouteille_id not in self.notes_commentaires or len(self.notes_commentaires[bouteille.bouteille_id]) == 0:
-			return "Aucun commentaire pour cette bouteille."
-
-		# Afficher tous les commentaires et les notes pour la bouteille
-		commentaires = self.notes_commentaires[bouteille.bouteille_id]
-		return [(utilisateur, note, commentaire) for utilisateur, note, commentaire in commentaires]
+    @staticmethod
+    def calculer_note_moyenne(bouteille_id):
+        db = get_db_connection()
+        cursor = db.cursor()
+        cursor.execute("SELECT AVG(note) FROM notes_commentaires WHERE bouteille_id = %s", (bouteille_id,))
+        moyenne = cursor.fetchone()[0]
+        cursor.close()
+        db.close()
+        return moyenne

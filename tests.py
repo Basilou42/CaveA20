@@ -1,83 +1,186 @@
-import unittest
-from classes import User, Cave, Etagere, Bouteille, Communaute
+import mysql.connector
+from classes import User, Cave, Etagere, Bouteille, Communaute, get_db_connection
+import pytest
 
-class TestVinApp(unittest.TestCase):
+# Helper function to create users
+def create_users():
+    """Creates and returns two users."""
+    user1 = User("JohnDoe", "password123")
+    user1.save()
 
-	def setUp(self):
-		"""Initialisation des objets pour les tests"""
-		self.user1 = User("JohnDoe", "password123")
-		self.user2 = User("JaneDoe", "password456")
-		self.bouteille1 = Bouteille("Domaine de la Romanée-Conti", "Romanée-Conti", "Rouge", "Bourgogne", 2015, 15000, "photo.jpg")
-		self.bouteille2 = Bouteille("Château Margaux", "Margaux", "Rouge", "Bordeaux", 2016, 1200, "photo.jpg")
-		self.user1.ajouter_cave("Cave à vin John")
-		self.cave = self.user1.caves[0]
-		self.cave.ajouter_etagere(5)  # Ajouter une étagère avec 5 emplacements
+    user2 = User("JaneDoe", "password456")
+    user2.save()
 
-	def test_creation_utilisateur(self):
-		"""Test de la création des utilisateurs"""
-		self.assertEqual(self.user1.username, "JohnDoe")
-		self.assertEqual(self.user2.username, "JaneDoe")
+    user1 = User.get_by_username("JohnDoe")
+    user2 = User.get_by_username("JaneDoe")
+    return user1, user2
 
-	def test_verification_mot_de_passe(self):
-		"""Test de la vérification du mot de passe"""
-		self.assertTrue(self.user1.verify_password("password123"))
-		self.assertFalse(self.user1.verify_password("wrongpassword"))
+# Helper function to create a bottle
+def create_bottle(name, appellation, couleur, region, annee, prix, photo, quantite=1):
+    """Creates and returns a bottle object."""
+    return Bouteille(name, appellation, couleur, region, annee, prix, photo, quantite)
 
-	def test_ajout_cave(self):
-		"""Test de l'ajout d'une cave pour un utilisateur"""
-		self.assertEqual(len(self.user1.caves), 1)
-		self.assertEqual(self.user1.caves[0].name, "Cave à vin John")
+@pytest.fixture(scope="function")
+def setup_db():
+    """Initialisation de la connexion à la base de données et nettoyage"""
+    db = get_db_connection()
+    cursor = db.cursor()
 
-	def test_ajout_etagere(self):
-		"""Test de l'ajout d'une étagère dans la cave"""
-		self.assertEqual(len(self.cave.etageres), 1)
-		self.assertEqual(self.cave.etageres[0].num_etagere, 1)
+    # Clean the database at the start of each test to avoid duplicates
+    cursor.execute("SET FOREIGN_KEY_CHECKS=0;")
+    cursor.execute("TRUNCATE TABLE notes_commentaires;")
+    cursor.execute("TRUNCATE TABLE bouteilles;")
+    cursor.execute("TRUNCATE TABLE etageres;")
+    cursor.execute("TRUNCATE TABLE caves;")
+    cursor.execute("TRUNCATE TABLE users;")
+    cursor.execute("SET FOREIGN_KEY_CHECKS=1;")
+    db.commit()
 
-	def test_ajout_bouteille(self):
-		"""Test de l'ajout d'une bouteille dans une étagère"""
-		self.cave.ajouter_bouteille(self.bouteille1, 1)
-		self.assertEqual(len(self.cave.etageres[0].bouteilles), 1)
-		self.assertEqual(self.cave.etageres[0].bouteilles[0].nom, "Romanée-Conti")
+    # Créer des utilisateurs pour les tests
+    user1, user2 = create_users()
 
-	def test_retrait_bouteille(self):
-		"""Test du retrait d'une bouteille d'une étagère"""
-		self.cave.ajouter_bouteille(self.bouteille1, 1)
-		self.cave.retirer_bouteille(self.bouteille1)
-		self.assertEqual(len(self.cave.etageres[0].bouteilles), 0)
+    # Créer une cave pour l'utilisateur 1
+    user1.ajouter_cave("Cave à vin John")
 
-	def test_ajout_lots_bouteilles(self):
-		"""Test de l'ajout d'un lot de bouteilles dans une étagère avec capacité limitée"""
-		bouteille_lot = Bouteille("Château Margaux", "Margaux", "Rouge", "Bordeaux", 2016, 1200, "photo.jpg", quantite=10)
-		with self.assertRaises(Exception) as context:
-			self.cave.ajouter_bouteille(bouteille_lot, 1)
+    # Récupérer la cave créée pour ajouter des étagères
+    caves = Cave.get_caves_by_user(user1.user_id)
+    cave1 = caves[0]
 
-		self.assertTrue("l'étagère est pleine" in str(context.exception))
+    # Ajouter une étagère avec 5 emplacements
+    etagere1 = Etagere(1, 5, cave1['cave_id'])
+    etagere1.ajouter_etagere(5)
 
-	def test_lister_bouteilles(self):
-		"""Test de la liste des bouteilles dans toutes les caves"""
-		self.cave.ajouter_bouteille(self.bouteille1, 1)
-		self.cave.ajouter_bouteille(self.bouteille2, 1)
-		bouteilles = self.user1.liste_bouteilles()
-		self.assertEqual(len(bouteilles), 2)
+    yield db, cursor, user1, user2, cave1, etagere1
 
-	def test_tri_bouteilles(self):
-		"""Test du tri des bouteilles par année"""
-		self.cave.ajouter_bouteille(self.bouteille1, 1)
-		self.cave.ajouter_bouteille(self.bouteille2, 1)
-		bouteilles_triees = self.user1.tri_bouteilles("annee")
-		self.assertEqual(bouteilles_triees[0].annee, 2015)
-		self.assertEqual(bouteilles_triees[1].annee, 2016)
+    # Cleanup after each test
+    cursor.execute("SET FOREIGN_KEY_CHECKS=0;")
+    cursor.execute("TRUNCATE TABLE notes_commentaires;")
+    cursor.execute("TRUNCATE TABLE bouteilles;")
+    cursor.execute("TRUNCATE TABLE etageres;")
+    cursor.execute("TRUNCATE TABLE caves;")
+    cursor.execute("TRUNCATE TABLE users;")
+    cursor.execute("SET FOREIGN_KEY_CHECKS=1;")
+    db.commit()
 
-	def test_ajout_note_commentaire(self):
-		"""Test de l'ajout d'une note et d'un commentaire à une bouteille"""
-		self.bouteille1.ajouter_note_commentaire(self.user1, 5, "Excellent vin !")
-		commentaires = self.bouteille1.afficher_commentaires()
-		note_moyenne = self.bouteille1.afficher_note_moyenne()
+def test_creation_utilisateur(setup_db):
+    """Test de la création des utilisateurs et de la récupération depuis la base de données"""
+    _, _, user1, user2, _, _ = setup_db
+    assert user1 is not None
+    assert user2 is not None
+    assert user1.username == "JohnDoe"
+    assert user2.username == "JaneDoe"
 
-		self.assertEqual(len(commentaires), 1)
-		self.assertEqual(commentaires[0][1], 5)  # Vérifie la note
-		self.assertEqual(commentaires[0][2], "Excellent vin !")  # Vérifie le commentaire
-		self.assertEqual(note_moyenne, 5.0)  # Vérifie la note moyenne
+def test_verification_mot_de_passe(setup_db):
+    """Test de la vérification du mot de passe"""
+    _, _, user1, _, _, _ = setup_db
+    assert user1.verify_password("password123")
+    assert not user1.verify_password("wrongpassword")
 
-if __name__ == '__main__':
-	unittest.main()
+def test_ajout_cave(setup_db):
+    """Test de l'ajout d'une cave pour un utilisateur"""
+    _, _, user1, _, cave1, _ = setup_db
+    caves = Cave.get_caves_by_user(user1.user_id)
+    assert len(caves) == 1
+    assert caves[0]['nom'] == "Cave à vin John"
+
+def test_ajout_etagere(setup_db):
+    """Test de l'ajout d'une étagère dans la cave"""
+    _, _, _, _, cave1, _ = setup_db
+    etageres = Etagere.get_etageres_by_cave(cave1['cave_id'])
+    assert len(etageres) == 1
+    assert etageres[0]['num_etagere'] == 1
+
+def test_ajout_bouteille(setup_db):
+    """Test de l'ajout d'une bouteille dans une étagère"""
+    db, cursor, _, _, _, etagere1 = setup_db
+    bouteille = create_bottle("Domaine de la Romanée-Conti", "Romanée-Conti", "Rouge", "Bourgogne", 2015, 15000, "photo.jpg")
+    etagere1.ajouter_bouteille(bouteille)
+
+    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere1.etagere_id)
+    assert len(bouteilles) == 1
+    assert bouteilles[0]['nom'] == "Romanée-Conti"
+
+def test_retrait_bouteille(setup_db):
+    """Test du retrait d'une bouteille d'une étagère"""
+    db, cursor, _, _, _, etagere1 = setup_db
+    bouteille = create_bottle("Domaine de la Romanée-Conti", "Romanée-Conti", "Rouge", "Bourgogne", 2015, 15000, "photo.jpg")
+    etagere1.ajouter_bouteille(bouteille)
+
+    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere1.etagere_id)
+    assert len(bouteilles) == 1
+
+    cursor.execute("DELETE FROM bouteilles WHERE nom = 'Romanée-Conti'")
+    db.commit()
+
+    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere1.etagere_id)
+    assert len(bouteilles) == 0
+
+def test_ajout_lots_bouteilles(setup_db):
+    """Test de l'ajout de plusieurs bouteilles identiques en lot"""
+    _, _, _, _, _, etagere1 = setup_db
+    bouteille_lot = create_bottle("Château Margaux", "Margaux", "Rouge", "Bordeaux", 2016, 1200, "photo.jpg", quantite=10)
+
+    with pytest.raises(Exception):
+        etagere1.ajouter_bouteille(bouteille_lot)
+
+def test_lister_bouteilles(setup_db):
+    """Test de la liste des bouteilles dans toutes les caves"""
+    _, _, _, _, _, etagere1 = setup_db
+    bouteille1 = create_bottle("Domaine de la Romanée-Conti", "Romanée-Conti", "Rouge", "Bourgogne", 2015, 15000, "photo.jpg")
+    bouteille2 = create_bottle("Château Margaux", "Margaux", "Rouge", "Bordeaux", 2016, 1200, "photo.jpg")
+
+    etagere1.ajouter_bouteille(bouteille1)
+    etagere1.ajouter_bouteille(bouteille2)
+
+    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere1.etagere_id)
+    assert len(bouteilles) == 2
+
+def test_tri_bouteilles(setup_db):
+    """Test du tri des bouteilles par année"""
+    db, cursor, _, _, _, etagere1 = setup_db
+    bouteille1 = create_bottle("Domaine de la Romanée-Conti", "Romanée-Conti", "Rouge", "Bourgogne", 2015, 15000, "photo.jpg")
+    bouteille2 = create_bottle("Château Margaux", "Margaux", "Rouge", "Bordeaux", 2016, 1200, "photo.jpg")
+
+    etagere1.ajouter_bouteille(bouteille1)
+    etagere1.ajouter_bouteille(bouteille2)
+
+    cursor.execute("SELECT * FROM bouteilles ORDER BY annee")
+    bouteilles_triees = cursor.fetchall()
+
+    assert bouteilles_triees[0][5] == 2015  # Année
+    assert bouteilles_triees[1][5] == 2016
+
+def test_ajout_note_commentaire(setup_db):
+    """Test de l'ajout d'une note et d'un commentaire à une bouteille"""
+    db, cursor, user1, _, _, etagere1 = setup_db
+    bouteille = create_bottle("Domaine de la Romanée-Conti", "Romanée-Conti", "Rouge", "Bourgogne", 2015, 15000, "photo.jpg")
+    etagere1.ajouter_bouteille(bouteille)
+    
+    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere1.etagere_id)
+    bouteille_id = bouteilles[0]['bouteille_id']
+    
+    Communaute.ajouter_note_commentaire(user1.user_id, bouteille_id, 5, "Excellent vin !")
+    
+    # Modify cursor to return a dictionary
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM notes_commentaires WHERE bouteille_id = %s", (bouteille_id,))
+    notes_commentaires = cursor.fetchall()
+    
+    assert len(notes_commentaires) == 1
+    assert notes_commentaires[0]['note'] == 5  # Access the 'note' field directly by name
+    assert notes_commentaires[0]['commentaire'] == "Excellent vin !"  # Access 'commentaire' by name
+
+def test_calculer_note_moyenne(setup_db):
+    """Test du calcul de la note moyenne d'une bouteille"""
+    db, cursor, user1, user2, _, etagere1 = setup_db
+    bouteille = create_bottle("Domaine de la Romanée-Conti", "Romanée-Conti", "Rouge", "Bourgogne", 2015, 15000, "photo.jpg")
+    etagere1.ajouter_bouteille(bouteille)
+
+    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere1.etagere_id)
+    bouteille_id = bouteilles[0]['bouteille_id']
+
+    Communaute.ajouter_note_commentaire(user1.user_id, bouteille_id, 4, "Très bon vin")
+    Communaute.ajouter_note_commentaire(user2.user_id, bouteille_id, 5, "Excellent vin")
+
+    moyenne = Communaute.calculer_note_moyenne(bouteille_id)
+    assert moyenne == 4.5
