@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etagere Contents</title>
+</head>
+<body>
+    <h1>Contents of Etagere {{ etagere.num_etagere }}</h1>
+    <h2>Emplacements: {{ etagere.emplacements }}</h2>
+    <h2>Bottles:</h2>
+
+    {% if bouteilles %}
+        <ul>
+            {% for bouteille in bouteilles %}
+                <li>
+                    <strong>Domaine:</strong> {{ bouteille.domaine }}<br>
+                    <strong>Nom:</strong> {{ bouteille.nom }}<br>
+                    <strong>Type:</strong> {{ bouteille.type_vin }}<br>
+                    <strong>Region:</strong> {{ bouteille.region }}<br>
+                    <strong>Year:</strong> {{ bouteille.annee }}<br>
+                    <strong>Price:</strong> {{ bouteille.prix }}<br>
+                    <strong>Quantity:</strong> {{ bouteille.quantite }}<br>
+                    <strong>Photo:</strong> <img src="{{ bouteille.photo }}" alt="Bottle Image" width="100"><br>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No bottles in this etagere.</p>
+    {% endif %}
+
+    <a href="{{ url_for('show_etageres', cave_id=etagere.cave_id) }}">Back to Etagere List</a>
+</body>
+</html>

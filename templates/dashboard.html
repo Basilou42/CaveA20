@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ username }}'s Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, {{ username }}!</h1>
+    <h2>Your Caves</h2>
+    <ul>
+        {% for cave in caves %}
+            <li>{{ cave.nom }} - <a href="{{ url_for('show_etageres', cave_id=cave.cave_id) }}">View Etageres</a></li>
+        {% endfor %}
+    </ul>
+
+    <h3>Add a New Cave</h3>
+    <form method="POST" action="{{ url_for('add_cave') }}">
+        <input type="hidden" name="username" value="{{ username }}">
+        <label for="cave_name">Cave Name:</label>
+        <input type="text" name="cave_name" required>
+        <button type="submit">Add Cave</button>
+    </form>
+</body>
+</html>
