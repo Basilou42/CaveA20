@@ -56,6 +56,21 @@ class User:
             return user
         return None
 
+    @staticmethod
+    def get_by_user_id(user_id):
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+        user_data = cursor.fetchone()
+        cursor.close()
+        db.close()
+        if user_data:
+            # Create the User object without hashing the password
+            user = User(user_data['username'], '')  # Pass a placeholder password
+            user.password_hash = user_data['password_hash']  # Assign the password hash directly
+            user.user_id = user_data['user_id']
+            return user
+        return None
 
 
     def ajouter_cave(self, nom):

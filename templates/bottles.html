@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Bottles in Shelf{% endblock %}
+
+{% block content %}
+    {% for bouteille in bouteilles %}
+        <li>
+            {{ bouteille['nom'] }} - {{ bouteille['type_vin'] }} ({{ bouteille['region'] }})
+            <form action="{{ url_for('add_note_comment') }}" method="POST">
+                <input type="hidden" name="bouteille_id" value="{{ bouteille['bouteille_id'] }}">
+                <input type="hidden" name="etagere_id" value="{{ etagere_id }}">
+                <input type="hidden" name="user_id" value="{{ session.user_id }}">
+                <label for="note">Rating (1-5):</label>
+                <input type="number" name="note" min="1" max="5" required>
+                <label for="commentaire">Comment:</label>
+                <textarea name="commentaire" required></textarea>
+                <button type="submit">Submit</button>
+            </form>
+        </li>
+    {% endfor %}
+
+{% endblock %}

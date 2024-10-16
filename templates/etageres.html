@@ -10,8 +10,31 @@
 
     {% if etageres %}
         <ul>
-            {% for etagere in etageres %}
-                <li>Etagere Number: {{ etagere.num_etagere }} - Emplacements: {{ etagere.emplacements }}</li>
+            {% for etagere_with_bottles in etageres %}
+                <li>
+                    <strong>Etagere Number:</strong> {{ etagere_with_bottles.etagere.num_etagere }} - 
+                    <strong>Emplacements:</strong> {{ etagere_with_bottles.etagere.emplacements }}
+                </li>
+                <h4>Bottles in this Etagere:</h4>
+                {% if etagere_with_bottles.bottles %}
+                    <ul>
+                        {% for bouteille in etagere_with_bottles.bottles %}
+                            <li>
+                                <strong>Domaine:</strong> {{ bouteille['domaine'] }}<br>
+                                <strong>Nom:</strong> {{ bouteille['nom'] }}<br>
+                                <strong>Type:</strong> {{ bouteille['type_vin'] }}<br>
+                                <strong>Region:</strong> {{ bouteille['region'] }}<br>
+                                <strong>Year:</strong> {{ bouteille['annee'] }}<br>
+                                <strong>Price:</strong> {{ bouteille['prix'] }}<br>
+                                <strong>Quantity:</strong> {{ bouteille['quantite'] }}<br>
+                                <strong>Photo:</strong> <img src="{{ bouteille['photo'] }}" alt="Bottle Image" width="100"><br>
+                            </li>
+                            <br>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No bottles in this etagere.</p>
+                {% endif %}
             {% endfor %}
         </ul>
 

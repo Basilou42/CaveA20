@@ -1,7 +1,10 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, session
 from classes import User, Cave, Etagere, Bouteille, Communaute
+import os
 
 app = Flask(__name__)
+
+app.secret_key = os.urandom(24)
 
 @app.route('/')
 def index():
@@ -27,29 +30,60 @@ def login():
         password = request.form['password']
         user = User.get_by_username(username)
         if user and user.verify_password(password):
-            return redirect(url_for('user_dashboard', username=user.username))
+            session['user_id'] = user.user_id  # Store user ID in session
+            return redirect(url_for('user_dashboard'))
         else:
             return "Login failed"
     return render_template('login.html')  # Add this to handle GET requests
 
-@app.route('/dashboard/<username>')
-def user_dashboard(username):
-    user = User.get_by_username(username)
+@app.route('/dashboard/')
+def user_dashboard():
+    user_id = session.get('user_id')  # Get user ID from session
+    if not user_id:
+        return redirect(url_for('login'))  # Redirect to login if user not logged in
+
+    user = User.get_by_user_id(user_id)  # Use user_id to fetch user details
     caves = Cave.get_caves_by_user(user.user_id)
-    return render_template('dashboard.html', username=username, caves=caves)
+    return render_template('dashboard.html', username=user.username, caves=caves)
 
 @app.route('/add_cave', methods=['POST'])
 def add_cave():
-    username = request.form['username']
-    cave_name = request.form['cave_name']
-    user = User.get_by_username(username)
-    user.ajouter_cave(cave_name)
-    return redirect(url_for('user_dashboard', username=username))
+    user_id = session.get('user_id')  # Get user ID from session
+    if not user_id:
+        return redirect(url_for('login'))  # Redirect to login if user not logged in
 
-@app.route('/cave/<cave_id>/etageres')
-def show_etageres(cave_id):
+    cave_name = request.form['cave_name']
+    user = User.get_by_user_id(user_id)
+    user.ajouter_cave(cave_name)
+    return redirect(url_for('user_dashboard'))
+
+@app.route('/select_cave', methods=['POST'])
+def select_cave():
+    cave_id = request.form['cave_id']
+    session['cave_id'] = cave_id  # Store the selected cave_id in the session
+    return redirect(url_for('show_etageres'))
+
+@app.route('/cave/etageres')
+def show_etageres():
+    cave_id = session.get('cave_id')  # Get cave_id from session
+    if not cave_id:
+        return redirect(url_for('user_dashboard'))  # Redirect to user dashboard if cave not selected
+
     etageres = Etagere.get_etageres_by_cave(cave_id)
-    return render_template('etageres.html', etageres=etageres, cave_id=cave_id)
+    
+    # For each etagere, fetch the bottles in that etagere
+    etageres_with_bottles = []
+    for etagere in etageres:
+        print(etagere['etagere_id'])   # Access 'etagere_id' using dictionary key
+        bouteilles = Bouteille.get_bouteilles_by_etagere(etagere['etagere_id'])
+        print(bouteilles)
+        etageres_with_bottles.append({
+            'etagere': etagere,
+            'bottles': bouteilles
+        })
+
+    return render_template('etageres.html', etageres=etageres_with_bottles, cave_id=cave_id)
+
 
 @app.route('/etagere/<etagere_id>')
 def show_etagere(etagere_id):
@@ -60,6 +94,11 @@ def show_etagere(etagere_id):
     
     return render_template('etagere.html', etagere=etagere_data, bouteilles=bouteilles)
 
+# Display bottles in a specific etagere (shelf)
+@app.route('/etagere/<etagere_id>/bottles')
+def show_bottles(etagere_id):
+    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere_id)
+    return render_template('bottles.html', bouteilles=bouteilles, etagere_id=etagere_id)
 
 @app.route('/add_etagere', methods=['POST'])
 def add_etagere():
@@ -99,6 +138,7 @@ def add_bottle():
 
     return redirect(url_for('show_etageres', cave_id=etagere.cave_id))  # Redirect to the appropriate page
 
+# Add note and comment after drinking a bottle
 @app.route('/add_note_comment', methods=['POST'])
 def add_note_comment():
     user_id = request.form['user_id']
@@ -106,7 +146,7 @@ def add_note_comment():
     note = int(request.form['note'])
     commentaire = request.form['commentaire']
     Communaute.ajouter_note_commentaire(user_id, bouteille_id, note, commentaire)
-    return redirect(url_for('show_etageres', cave_id=request.form['cave_id']))
+    return redirect(url_for('show_bottles', etagere_id=request.form['etagere_id']))
 
 if __name__ == '__main__':
     app.run(debug=True)

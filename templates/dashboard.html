@@ -1,25 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ username }}'s Dashboard</title>
-</head>
-<body>
-    <h1>Welcome, {{ username }}!</h1>
-    <h2>Your Caves</h2>
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+    <h1>Binevenue, {{ username }} !</h1>
+    <h2>Vos Caves</h2>
     <ul>
         {% for cave in caves %}
-            <li>{{ cave.nom }} - <a href="{{ url_for('show_etageres', cave_id=cave.cave_id) }}">View Etageres</a></li>
+            <li>
+                {{ cave.nom }} 
+                <form method="POST" action="{{ url_for('select_cave') }}">
+                    <input type="hidden" name="cave_id" value="{{ cave.cave_id }}">
+                    <button type="submit">Select Cave</button>
+                </form>
+            </li>
         {% endfor %}
     </ul>
 
-    <h3>Add a New Cave</h3>
+    <h3>Ajouter une Cave</h3>
     <form method="POST" action="{{ url_for('add_cave') }}">
         <input type="hidden" name="username" value="{{ username }}">
-        <label for="cave_name">Cave Name:</label>
+        <label for="cave_name">Nom de la Cave:</label>
         <input type="text" name="cave_name" required>
-        <button type="submit">Add Cave</button>
+        <button type="submit">Ajouter la Cave</button>
     </form>
-</body>
-</html>
+{% endblock %}

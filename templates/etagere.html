@@ -1,11 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Etagere Contents</title>
-</head>
-<body>
+{% extends 'base.html' %}
+
+{% block content %}
     <h1>Contents of Etagere {{ etagere.num_etagere }}</h1>
     <h2>Emplacements: {{ etagere.emplacements }}</h2>
     <h2>Bottles:</h2>
@@ -30,5 +25,4 @@
     {% endif %}
 
     <a href="{{ url_for('show_etageres', cave_id=etagere.cave_id) }}">Back to Etagere List</a>
-</body>
-</html>
+{% endblock %}
