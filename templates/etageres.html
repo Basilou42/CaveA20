@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etageres in Cave</title>
+</head>
+<body>
+    <h1>Etageres in Cave</h1>
+
+    {% if etageres %}
+        <ul>
+            {% for etagere in etageres %}
+                <li>Etagere Number: {{ etagere.num_etagere }} - Emplacements: {{ etagere.emplacements }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>Add a New Bottle</h3>
+        <form method="POST" action="{{ url_for('add_bottle') }}">
+            <input type="hidden" name="etagere_id" value="{{ etageres[0].etagere_id }}">
+            <label for="domaine">Domaine:</label>
+            <input type="text" name="domaine" required>
+            <br>
+            <label for="nom">Nom:</label>
+            <input type="text" name="nom" required>
+            <br>
+            <label for="type_vin">Type of Wine:</label>
+            <input type="text" name="type_vin" required>
+            <br>
+            <label for="region">Region:</label>
+            <input type="text" name="region" required>
+            <br>
+            <label for="annee">Year:</label>
+            <input type="number" name="annee" required>
+            <br>
+            <label for="prix">Price:</label>
+            <input type="number" name="prix" required>
+            <br>
+            <label for="quantite">Quantity:</label>
+            <input type="number" name="quantite" value="1" required>
+            <br>
+            <label for="photo">Photo URL:</label>
+            <input type="text" name="photo">
+            <br>
+            <button type="submit">Add Bottle</button>
+        </form>
+    {% else %}
+        <p>No etageres available for this cave.</p>
+    {% endif %}
+
+    <h3>Add a New Etagere</h3>
+    <form method="POST" action="{{ url_for('add_etagere') }}">
+        <input type="hidden" name="cave_id" value="{{ cave_id }}">  <!-- Ensure cave_id is set correctly -->
+        <label for="num_etagere">Etagere Number:</label>
+        <input type="number" name="num_etagere" required>
+        <br>
+        <label for="emplacements">Number of Emplacements:</label>
+        <input type="number" name="emplacements" required>
+        <br>
+        <button type="submit">Add Etagere</button>
+    </form>
+
+
+</body>
+</html>

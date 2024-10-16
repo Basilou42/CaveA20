@@ -121,22 +121,34 @@ class Etagere:
         db = get_db_connection()
         cursor = db.cursor()
         cursor.execute("SELECT COUNT(*) FROM bouteilles WHERE etagere_id = %s", (self.etagere_id,))
-        nb_bouteilles = cursor.fetchone()[0]
+        nb_bouteilles = cursor.fetchone()[0]  # This should be an int if your COUNT query is correct
         cursor.close()
         db.close()
+
+        # Ensure that self.emplacements is an integer
+        if isinstance(self.emplacements, str):
+            self.emplacements = int(self.emplacements)  # Convert to int if it's a string
+
         return nb_bouteilles + nombre_bouteilles <= self.emplacements
 
     def ajouter_bouteille(self, bouteille):
         db = get_db_connection()
         cursor = db.cursor()
+        
+        # Ensure bouteille.quantite is an integer
+        if isinstance(bouteille.quantite, str):
+            bouteille.quantite = int(bouteille.quantite)  # Convert to int if it's a string
+
         if self.place_libre(bouteille.quantite):
             cursor.execute("INSERT INTO bouteilles (domaine, nom, type_vin, region, annee, prix, photo, quantite, etagere_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                            (bouteille.domaine, bouteille.nom, bouteille.typeVin, bouteille.region, bouteille.annee, bouteille.prix, bouteille.photo, bouteille.quantite, self.etagere_id))
             db.commit()
         else:
             raise Exception("Pas assez de place dans l'étagère")
+        
         cursor.close()
         db.close()
+
 
 class Bouteille:
     def __init__(self, domaine, nom, typeVin, region, annee, prix, photo, quantite=1):
