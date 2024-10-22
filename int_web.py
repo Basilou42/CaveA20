@@ -85,20 +85,20 @@ def show_etageres():
     return render_template('etageres.html', etageres=etageres_with_bottles, cave_id=cave_id)
 
 
-@app.route('/etagere/<etagere_id>')
-def show_etagere(etagere_id):
-    # Fetch the etagere details
-    etagere_data = Etagere.get_etageres_by_cave(etagere_id)[0]  # Assuming this returns a dictionary
-    # Fetch the bottles in this etagere
-    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere_id)
+# @app.route('/etagere/<etagere_id>')
+# def show_etagere(etagere_id):
+#     # Fetch the etagere details
+#     etagere_data = Etagere.get_etageres_by_cave(etagere_id)[0]  # Assuming this returns a dictionary
+#     # Fetch the bottles in this etagere
+#     bouteilles = Bouteille.get_bouteilles_by_etagere(etagere_id)
     
-    return render_template('etagere.html', etagere=etagere_data, bouteilles=bouteilles)
+#     return render_template('etagere.html', etagere=etagere_data, bouteilles=bouteilles)
 
-# Display bottles in a specific etagere (shelf)
-@app.route('/etagere/<etagere_id>/bottles')
-def show_bottles(etagere_id):
-    bouteilles = Bouteille.get_bouteilles_by_etagere(etagere_id)
-    return render_template('bottles.html', bouteilles=bouteilles, etagere_id=etagere_id)
+# # Display bottles in a specific etagere (shelf)
+# @app.route('/etagere/<etagere_id>/bottles')
+# def show_bottles(etagere_id):
+#     bouteilles = Bouteille.get_bouteilles_by_etagere(etagere_id)
+#     return render_template('bottles.html', bouteilles=bouteilles, etagere_id=etagere_id)
 
 @app.route('/add_etagere', methods=['POST'])
 def add_etagere():
@@ -130,9 +130,12 @@ def add_bottle():
     photo = request.form['photo']
 
     # Retrieve the etagere by its ID, then create an Etagere instance
-    etagere_data = Etagere.get_etageres_by_cave(etagere_id)[0]  # Assuming this returns a dictionary
-    etagere = Etagere(etagere_data['num_etagere'], etagere_data['emplacements'], etagere_data['cave_id'], etagere_id)  # Instantiate Etagere object
+    print(f"etagere_id: {etagere_id}")
+    etagere_data = Etagere.get_etagere_by_id(etagere_id)
+    if not etagere_data:
+        return "Error: Etagere not found.", 404
 
+    etagere = Etagere(etagere_data['num_etagere'], etagere_data['emplacements'], etagere_data['cave_id'], etagere_id)  # Instantiate Etagere object
     bouteille = Bouteille(domaine, nom, type_vin, region, annee, prix, photo, quantite)
     etagere.ajouter_bouteille(bouteille)  # Now this should work as etagere is an instance of Etagere
 

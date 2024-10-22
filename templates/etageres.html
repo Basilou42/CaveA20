@@ -40,7 +40,6 @@
 
         <h3>Add a New Bottle</h3>
         <form method="POST" action="{{ url_for('add_bottle') }}">
-            <input type="hidden" name="etagere_id" value="{{ etageres[0].etagere_id }}">
             <label for="domaine">Domaine:</label>
             <input type="text" name="domaine" required>
             <br>
@@ -53,7 +52,7 @@
             <label for="region">Region:</label>
             <input type="text" name="region" required>
             <br>
-            <label for="annee">Year:</label>
+            <label for="annee">Année:</label>
             <input type="number" name="annee" required>
             <br>
             <label for="prix">Price:</label>
@@ -64,6 +63,9 @@
             <br>
             <label for="photo">Photo URL:</label>
             <input type="text" name="photo">
+            <br>
+            <label for="etagere_id">etagere_id:</label>
+            <input type="int" name="etagere_id" value="1">
             <br>
             <button type="submit">Add Bottle</button>
         </form>

@@ -72,11 +72,25 @@ class User:
             return user
         return None
 
-
     def ajouter_cave(self, nom):
         db = get_db_connection()
         cursor = db.cursor()
         cursor.execute("INSERT INTO caves (nom, user_id) VALUES (%s, %s)", (nom, self.user_id))
+        db.commit()
+        cursor.close()
+        db.close()
+
+    @staticmethod
+    def delete_cave(cave_id):
+        db = get_db_connection()
+        cursor = db.cursor()
+        
+        # First, delete associated etageres and bouteilles
+        cursor.execute("DELETE FROM bouteilles WHERE etagere_id IN (SELECT etagere_id FROM etageres WHERE cave_id = %s)", (cave_id,))
+        cursor.execute("DELETE FROM etageres WHERE cave_id = %s", (cave_id,))
+        
+        # Then, delete the cave itself
+        cursor.execute("DELETE FROM caves WHERE cave_id = %s", (cave_id,))
         db.commit()
         cursor.close()
         db.close()
@@ -122,6 +136,17 @@ class Etagere:
         db.close()
         return etageres
 
+    @staticmethod
+    def get_etagere_by_id(etagere_id):
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM etageres WHERE etagere_id = %s", (etagere_id,))
+        etagere = cursor.fetchone()  # Fetch the single etagere with the given ID
+        cursor.close()
+        db.close()
+        return etagere
+
+
     def ajouter_etagere(self, emplacements):
         db = get_db_connection()
         cursor = db.cursor()
@@ -132,6 +157,20 @@ class Etagere:
         cursor.close()
         db.close()
 
+    @staticmethod
+    def delete_etagere(etagere_id):
+        db = get_db_connection()
+        cursor = db.cursor()
+        
+        # First, delete associated bouteilles
+        cursor.execute("DELETE FROM bouteilles WHERE etagere_id = %s", (etagere_id,))
+        
+        # Then, delete the etagere itself
+        cursor.execute("DELETE FROM etageres WHERE etagere_id = %s", (etagere_id,))
+        db.commit()
+        cursor.close()
+        db.close()
+        
     def place_libre(self, nombre_bouteilles=1):
         db = get_db_connection()
         cursor = db.cursor()
@@ -185,6 +224,15 @@ class Bouteille:
         cursor.close()
         db.close()
         return bouteilles
+
+    @staticmethod
+    def delete_bottle(bouteille_id):
+        db = get_db_connection()
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM bouteilles WHERE bouteille_id = %s", (bouteille_id,))
+        db.commit()
+        cursor.close()
+        db.close()
 
 class Communaute:
     @staticmethod
